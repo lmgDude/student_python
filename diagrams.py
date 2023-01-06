@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 import pdfkit
 from jinja2 import Environment, FileSystemLoader
 
+
 def create_table(work_sheet, tags, collection, index_table, is_percent):
     side = Side(style='thin')
     border = Border(left=side, right=side, top=side, bottom=side)
@@ -61,45 +62,37 @@ class DataSet:
                 if correct_row:
                     self.professions.append(Profession(*[row[field] for field in row]))
 
-    def get_info(self):
-        salary_dict = dict()
-        count_dict = dict()
-        for profession in self.professions:
-            profession.salary_from = int(str(profession.salary_from).replace('.0', ''))
-            profession.salary_to = int(str(profession.salary_to).replace('.0', ''))
-            if profession.get_year() not in salary_dict.keys():
-                salary_dict[profession.get_year()] = []
-            salary_dict[profession.get_year()].append((profession.salary_from + profession.salary_to) // 2
-                                                      * self.currency_to_rub[profession.salary_currency])
-        for key, value in salary_dict.items():
-            salary_dict[key] = int(str((sum(value) // len(value))).replace('.0', ''))
-            count_dict[key] = len(value)
-        print("Динамика уровня зарплат по годам:", salary_dict)
-        print('Динамика количества вакансий по годам:', count_dict)
-        self.year_collection.append(salary_dict)
-        self.year_collection.append(count_dict)
+    def get_info(self, is_profession):
+        # Если нужно получить информацию по годам для выбранной профессии => is_profession нужно установить на True
 
-    def get_info_professions(self):
         salary_dict = dict()
         count_dict = dict()
         for profession in self.professions:
+            profession.salary_from = int(profession.salary_from)
+            profession.salary_to = int(profession.salary_to)
+
             if profession.get_year() not in salary_dict.keys():
                 salary_dict[profession.get_year()] = []
-            if self.profession_name in profession.name:
-                profession.salary_from = int(str(profession.salary_from).replace('.0', ''))
-                profession.salary_to = int(str(profession.salary_to).replace('.0', ''))
-                salary_dict[profession.get_year()].append((profession.salary_from + profession.salary_to) // 2
-                                                          * self.currency_to_rub[profession.salary_currency])
-        for key, value in salary_dict.items():
-            if len(value) != 0:
-                salary_dict[key] = int(str((sum(value) // len(value))).replace('.0', ''))
-                count_dict[key] = len(value)
+
+            if is_profession:
+                if self.profession_name in profession.name:
+                    salary_dict[profession.get_year()].append((profession.salary_from + profession.salary_to) // 2
+                                                              * self.currency_to_rub[profession.salary_currency])
             else:
-                salary_dict[key] = 0
-                count_dict[key] = 0
+                salary_dict[profession.get_year()].append(int((profession.salary_from + profession.salary_to) // 2
+                                                              * self.currency_to_rub[profession.salary_currency]))
 
-        print("Динамика уровня зарплат по годам для выбранной профессии:", salary_dict)
-        print('Динамика количества вакансий по годам для выбранной профессии:', count_dict)
+        for key, value in salary_dict.items():
+            salary_dict[key] = int(sum(value) // len(value)) if len(value) != 0 else 0
+            count_dict[key] = len(value) if len(value) != 0 else 0
+
+        if is_profession:
+            print("Динамика уровня зарплат по годам для выбранной профессии:", salary_dict)
+            print('Динамика количества вакансий по годам для выбранной профессии:', count_dict)
+        else:
+            print("Динамика уровня зарплат по годам:", salary_dict)
+            print('Динамика количества вакансий по годам:', count_dict)
+
         self.year_collection.append(salary_dict)
         self.year_collection.append(count_dict)
 
@@ -107,30 +100,36 @@ class DataSet:
         city_dict = dict()
         ans_dict = dict()
         count_vacancy = 0
+
         for profession in self.professions:
-            profession.salary_from = int(str(profession.salary_from).replace('.0', ''))
-            profession.salary_to = int(str(profession.salary_to).replace('.0', ''))
+            profession.salary_from = int(profession.salary_from)
+            profession.salary_to = int(profession.salary_to)
+
             if profession.area_name not in city_dict.keys():
                 city_dict[profession.area_name] = []
-            city_dict[profession.area_name].append((profession.salary_from + profession.salary_to) // 2
-                                                   * self.currency_to_rub[profession.salary_currency])
+            city_dict[profession.area_name].append(int((profession.salary_from + profession.salary_to) // 2
+                                                       * self.currency_to_rub[profession.salary_currency]))
             count_vacancy += 1
         percent_dict = dict()
+
         for key, value in city_dict.items():
             if len(value) >= count_vacancy // 100:
-                ans_dict[key] = int(str((sum(value) // len(value))).replace('.0', ''))
+                ans_dict[key] = int(sum(value) // len(value))
                 percent_dict[key] = round(len(value) / count_vacancy, 4)
+
         ans_dict = dict(sorted(ans_dict.items(), key=lambda item: item[1], reverse=True)[:10])
         percent_dict = dict(sorted(percent_dict.items(), key=lambda item: item[1], reverse=True)[:10])
+
         print('Уровень зарплат по городам (в порядке убывания):', ans_dict)
         print('Доля вакансий по городам (в порядке убывания):', percent_dict)
+
         self.city_collection.append(ans_dict)
         self.city_collection.append(percent_dict)
 
     def get_general_info(self):
         self.get_correct_data()
-        self.get_info()
-        self.get_info_professions()
+        self.get_info(False)
+        self.get_info(True)
         self.get_info_cities()
 
 
@@ -169,7 +168,7 @@ class Report:
         self.sheet = create_table(self.sheet, names, collection_years, 1, False)
         self.second_sheet = create_table(self.second_sheet, ["Город", "Уровень зарплат"], collection_level, 1, False)
         self.second_sheet = create_table(self.second_sheet, ["Город", "Доля вакансий"], collection_fraction, 4, True)
-        self.book.save("report.xlsx")
+        self.book.save("template/report.xlsx")
         self.book.close()
 
     def generate_image(self):
@@ -192,7 +191,7 @@ class Report:
         vacancy_city_values = list(self.city_collection[1].values())
         vacancy_city_labels = list(self.city_collection[1].keys())
 
-        axis[0, 0].bar(x - width/2, salary_year_y, width)
+        axis[0, 0].bar(x - width / 2, salary_year_y, width)
         axis[0, 0].bar(x + width / 2, salary_year_profession_y, width)
         axis[0, 0].set_xticks(x, salary_and_vacancy_year_x)
         axis[0, 0].tick_params(axis='x', labelsize=8, rotation=90)
@@ -201,8 +200,8 @@ class Report:
         axis[0, 0].set_title("Уровень зарплат по годам")
         axis[0, 0].legend(['средняя з/п', f'з/п {profession}'], fontsize=8)
 
-        axis[0, 1].bar(x - width/2, vacancy_year_y, width)
-        axis[0, 1].bar(x + width/2, vacancy_year_profession_y, width)
+        axis[0, 1].bar(x - width / 2, vacancy_year_y, width)
+        axis[0, 1].bar(x + width / 2, vacancy_year_profession_y, width)
         axis[0, 1].set_xticks(x, salary_and_vacancy_year_x)
         axis[0, 1].tick_params(axis='x', labelsize=8, rotation=90)
         axis[0, 1].tick_params(axis='y', labelsize=8)
@@ -223,7 +222,7 @@ class Report:
         axis[1, 1].plot()
 
         plt.tight_layout()
-        plt.savefig('graph.png')
+        plt.savefig('template/graph.png')
 
     def generate_pdf(self):
         path = r'Путь к html'
@@ -241,22 +240,26 @@ class Report:
 
         [table.to_html(element, index=False) for table, element in [[first_table, path], [second_table, path_second],
                                                                     [third_table, path_third]]]
-        template = Environment(loader=FileSystemLoader('.')).get_template("result.html")
+        template = Environment(loader=FileSystemLoader('.')).get_template("template/result.html")
         pdf_template = template.render({'name': self.data.profession_name,
                                         'first_table': open(path, 'r', encoding='utf-8-sig').read(),
                                         'second_table': open(path_second, 'r', encoding='utf-8-sig').read(),
                                         'third_table': open(path_third, 'r', encoding='utf-8-sig').read()})
 
         config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
-        pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={"enable-local-file-access": ""})
+        pdfkit.from_string(pdf_template, 'template/report.pdf', configuration=config,
+                           options={"enable-local-file-access": ""})
         [os.remove(element) for element in [path, path_second, path_third]]
+
+    def execute_report(self):
+        self.generate_excel()
+        self.generate_image()
+        self.generate_pdf()
 
 
 def execute():
     data_professions = DataSet()
     data_professions.get_general_info()
 
-    report = Report(data_professions)
-    report.generate_excel()
-    report.generate_image()
-    report.generate_pdf()
+
+execute()
