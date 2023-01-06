@@ -10,7 +10,6 @@ from matplotlib import pyplot as plt
 import pdfkit
 from jinja2 import Environment, FileSystemLoader
 
-
 def create_table(work_sheet, tags, collection, index_table, is_percent):
     side = Side(style='thin')
     border = Border(left=side, right=side, top=side, bottom=side)
@@ -227,10 +226,10 @@ class Report:
         plt.savefig('graph.png')
 
     def generate_pdf(self):
-        path = r'Первый шаблон'
-        path_second = r'Второй шаблон'
-        path_third = r'Третий шаблон'
-        excel_path = r'C:\Users\trint\Desktop\urfu_python\report.xlsx'
+        path = r'Путь к html'
+        path_second = r'Путь к шаблону 2'
+        path_third = r'Путь к шаблону 3'
+        excel_path = r'Путь к exel'
 
         first_table = pd.read_excel(excel_path)
         second_table = pd.read_excel(excel_path,
@@ -253,10 +252,11 @@ class Report:
         [os.remove(element) for element in [path, path_second, path_third]]
 
 
-data_professions = DataSet()
-data_professions.get_general_info()
+def execute():
+    data_professions = DataSet()
+    data_professions.get_general_info()
 
-report = Report(data_professions)
-report.generate_excel()
-report.generate_image()
-report.generate_pdf()
+    report = Report(data_professions)
+    report.generate_excel()
+    report.generate_image()
+    report.generate_pdf()
