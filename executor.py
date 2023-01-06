@@ -2,7 +2,7 @@ import diagrams
 import statistic
 
 value = input()
-if value == "Кансии":
+if value == "Вакансии":
     statistic.execute()
 elif value == "Статистика":
     diagrams.execute()
