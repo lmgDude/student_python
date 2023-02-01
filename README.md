@@ -1,1 +1,3 @@
-# student_python
+- - -
+# Python tasks of the Institute
+`                                                                                                                                     `
